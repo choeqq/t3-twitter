@@ -4,6 +4,7 @@ import { RouterOutputs, trpc } from "../utils/trpc";
 import { CreateTweet } from "./CreateTweet";
 import relativeTime from "dayjs/plugin/relativeTime";
 import updateLocale from "dayjs/plugin/updateLocale";
+import { useEffect, useRef, useState } from "react";
 
 dayjs.extend(relativeTime);
 dayjs.extend(updateLocale);
@@ -25,6 +26,50 @@ dayjs.updateLocale("en", {
     yy: "%dy",
   },
 });
+
+function useDebounce<T>(value: T, delay = 500): T {
+  const [debauncedValue, setDebauncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebauncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debauncedValue;
+}
+
+function useScrollPosition() {
+  const [scrollPosition, setScrollPosition] = useState(0);
+  const debouncedScrollPosition = useDebounce(scrollPosition, 500);
+
+  function handleScroll() {
+    const height =
+      document.documentElement.scrollHeight -
+      document.documentElement.clientHeight;
+
+    const winScroll =
+      document.body.scrollTop || document.documentElement.scrollTop;
+
+    const scrolled = (winScroll / height) * 100;
+
+    setScrollPosition(scrolled);
+  }
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
+  return debouncedScrollPosition;
+}
 
 function Tweet({
   tweet,
@@ -60,16 +105,31 @@ function Tweet({
 }
 
 export function Timeline() {
-  const { data } = trpc.tweet.timeline.useQuery({ limit: 2 });
+  const { data, hasNextPage, fetchNextPage, isFetching } =
+    trpc.tweet.timeline.useInfiniteQuery(
+      { limit: 10 },
+      {
+        getNextPageParam: (lastPage) => lastPage.nextCursor,
+      }
+    );
+  const scrollPosition = useScrollPosition();
+  const tweets = data?.pages.flatMap((page) => page.tweets) ?? [];
+
+  useEffect(() => {
+    if (scrollPosition > 90 && hasNextPage && !isFetching) {
+      fetchNextPage();
+    }
+  }, [fetchNextPage, isFetching, scrollPosition, hasNextPage]);
 
   return (
     <div>
-      {data?.nextCursor}
       <CreateTweet />
       <div className="border-l-2 border-r-2 border-t-2 border-gray-500">
-        {data?.tweets.map((tweet) => (
+        {tweets.map((tweet) => (
           <Tweet key={tweet.id} tweet={tweet} />
         ))}
+
+        {!hasNextPage && <p>No more items to load</p>}
       </div>
     </div>
   );
