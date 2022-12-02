@@ -22,18 +22,28 @@ export const tweetRouter = router({
   timeline: publicProcedure
     .input(
       z.object({
+        where: z
+          .object({
+            author: z
+              .object({
+                name: z.string().optional(),
+              })
+              .optional(),
+          })
+          .optional(),
         cursor: z.string().nullish(),
         limit: z.number().min(1).max(100).default(10),
       })
     )
     .query(async ({ input, ctx }) => {
       const { prisma } = ctx;
-      const { cursor, limit } = input;
+      const { cursor, limit, where } = input;
 
       const userId = ctx.session?.user?.id;
 
       const tweets = await prisma.tweet.findMany({
         take: limit + 1,
+        where,
         orderBy: [
           {
             createdAt: "desc",
