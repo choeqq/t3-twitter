@@ -14,7 +14,14 @@ export function CreateTweet() {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
 
-  const { mutateAsync } = trpc.tweet.create.useMutation();
+  const utils = trpc.useContext();
+
+  const { mutateAsync } = trpc.tweet.create.useMutation({
+    onSuccess: () => {
+      setText("");
+      utils.tweet.timeline.invalidate();
+    },
+  });
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -43,7 +50,7 @@ export function CreateTweet() {
 
         <div className="mt-4 flex justify-end">
           <button
-            className="bg-primary rounded-md px-4 py-2 text-white"
+            className="rounded-md bg-primary px-4 py-2 text-white"
             type="submit"
           >
             Tweet
