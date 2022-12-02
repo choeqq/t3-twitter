@@ -107,12 +107,17 @@ function updateCache({
         RouterOutputs["tweet"]["timeline"]
       >;
 
+      const value = action === "like" ? 1 : -1;
+
       const newTweets = newData.pages.map((page) => ({
         tweets: page.tweets.map((tweet) => {
           if (tweet.id === variables.tweetId) {
             return {
               ...tweet,
               likes: action === "like" ? [data.userId] : [],
+              _count: {
+                likes: tweet._count.likes + value,
+              },
             };
           }
 
@@ -185,7 +190,7 @@ function Tweet({
             likeMutation({ tweetId: tweet.id });
           }}
         />
-        <span className="text-sm text-gray-500">{10}</span>
+        <span className="text-sm text-gray-500">{tweet._count.likes}</span>
       </div>
     </div>
   );
