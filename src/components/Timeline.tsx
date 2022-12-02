@@ -1,27 +1,27 @@
-import dayjs from "dayjs";
 import Image from "next/image";
 import { RouterInputs, RouterOutputs, trpc } from "../utils/trpc";
 import { CreateTweet } from "./CreateTweet";
-import relativeTime from "dayjs/plugin/relativeTime";
-import updateLocale from "dayjs/plugin/updateLocale";
-import { useEffect, useRef, useState } from "react";
+
+import { useEffect, useState } from "react";
 import { AiFillHeart } from "react-icons/ai";
 import {
   InfiniteData,
   QueryClient,
   useQueryClient,
 } from "@tanstack/react-query";
-import Link from "next/link";
 
-const LIMIT = 10;
+import Link from "next/link";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import updateLocal from "dayjs/plugin/updateLocale";
 
 dayjs.extend(relativeTime);
-dayjs.extend(updateLocale);
+dayjs.extend(updateLocal);
 
 dayjs.updateLocale("en", {
   relativeTime: {
     future: "in %s",
-    past: "%s ago",
+    past: "%s",
     s: "1m",
     m: "1m",
     mm: "%dm",
@@ -36,38 +36,19 @@ dayjs.updateLocale("en", {
   },
 });
 
-function useDebounce<T>(value: T, delay = 500): T {
-  const [debauncedValue, setDebauncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebauncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [value, delay]);
-
-  return debauncedValue;
-}
-
 function useScrollPosition() {
   const [scrollPosition, setScrollPosition] = useState(0);
-  const debouncedScrollPosition = useDebounce(scrollPosition, 500);
 
-  function handleScroll() {
+  const handleScroll = () => {
     const height =
       document.documentElement.scrollHeight -
       document.documentElement.clientHeight;
-
     const winScroll =
       document.body.scrollTop || document.documentElement.scrollTop;
 
     const scrolled = (winScroll / height) * 100;
-
     setScrollPosition(scrolled);
-  }
+  };
 
   useEffect(() => {
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -77,8 +58,10 @@ function useScrollPosition() {
     };
   }, []);
 
-  return debouncedScrollPosition;
+  return scrollPosition;
 }
+
+const LIMIT = 10;
 
 function updateCache({
   client,
@@ -112,21 +95,23 @@ function updateCache({
 
       const value = action === "like" ? 1 : -1;
 
-      const newTweets = newData.pages.map((page) => ({
-        tweets: page.tweets.map((tweet) => {
-          if (tweet.id === variables.tweetId) {
-            return {
-              ...tweet,
-              likes: action === "like" ? [data.userId] : [],
-              _count: {
-                likes: tweet._count.likes + value,
-              },
-            };
-          }
+      const newTweets = newData.pages.map((page) => {
+        return {
+          tweets: page.tweets.map((tweet) => {
+            if (tweet.id === variables.tweetId) {
+              return {
+                ...tweet,
+                likes: action === "like" ? [data.userId] : [],
+                _count: {
+                  likes: tweet._count.likes + value,
+                },
+              };
+            }
 
-          return tweet;
-        }),
-      }));
+            return tweet;
+          }),
+        };
+      });
 
       return {
         ...newData,
@@ -159,8 +144,8 @@ function Tweet({
   const hasLiked = tweet.likes.length > 0;
 
   return (
-    <div className="mb-4 border-b-2 border-gray-500 ">
-      <div className="flex p-2 ">
+    <div className="mb-4 border-b-2 border-gray-500">
+      <div className="flex p-2">
         {tweet.author.image && (
           <Image
             src={tweet.author.image}
@@ -170,13 +155,13 @@ function Tweet({
             className="rounded-full"
           />
         )}
+
         <div className="ml-2">
-          <div className="align-center flex">
+          <div className="flex items-center">
             <p className="font-bold">
               <Link href={`/${tweet.author.name}`}>{tweet.author.name}</Link>
             </p>
-            <p className="text-sm text-gray-400">
-              {" "}
+            <p className="pl-1 text-xs text-gray-500">
               - {dayjs(tweet.createdAt).fromNow()}
             </p>
           </div>
@@ -191,12 +176,18 @@ function Tweet({
           size="1.5rem"
           onClick={() => {
             if (hasLiked) {
-              unlikeMutation({ tweetId: tweet.id });
+              unlikeMutation({
+                tweetId: tweet.id,
+              });
               return;
             }
-            likeMutation({ tweetId: tweet.id });
+
+            likeMutation({
+              tweetId: tweet.id,
+            });
           }}
         />
+
         <span className="text-sm text-gray-500">{tweet._count.likes}</span>
       </div>
     </div>
@@ -208,14 +199,18 @@ export function Timeline({
 }: {
   where: RouterInputs["tweet"]["timeline"]["where"];
 }) {
+  const scrollPosition = useScrollPosition();
+
   const { data, hasNextPage, fetchNextPage, isFetching } =
     trpc.tweet.timeline.useInfiniteQuery(
-      { limit: LIMIT },
+      {
+        limit: LIMIT,
+        where,
+      },
       {
         getNextPageParam: (lastPage) => lastPage.nextCursor,
       }
     );
-  const scrollPosition = useScrollPosition();
 
   const client = useQueryClient();
 
@@ -225,23 +220,25 @@ export function Timeline({
     if (scrollPosition > 90 && hasNextPage && !isFetching) {
       fetchNextPage();
     }
-  }, [fetchNextPage, isFetching, scrollPosition, hasNextPage]);
+  }, [scrollPosition, hasNextPage, isFetching, fetchNextPage]);
 
   return (
     <div>
       <CreateTweet />
       <div className="border-l-2 border-r-2 border-t-2 border-gray-500">
-        {tweets.map((tweet) => (
-          <Tweet
-            key={tweet.id}
-            tweet={tweet}
-            client={client}
-            input={{
-              where,
-              limit: LIMIT,
-            }}
-          />
-        ))}
+        {tweets.map((tweet) => {
+          return (
+            <Tweet
+              key={tweet.id}
+              tweet={tweet}
+              client={client}
+              input={{
+                where,
+                limit: LIMIT,
+              }}
+            />
+          );
+        })}
 
         {!hasNextPage && <p>No more items to load</p>}
       </div>
