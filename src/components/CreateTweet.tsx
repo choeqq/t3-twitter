@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { object, string } from "zod";
 import { trpc } from "../utils/trpc";
 
@@ -23,7 +23,7 @@ export function CreateTweet() {
     },
   });
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     try {
@@ -44,8 +44,8 @@ export function CreateTweet() {
         className="mb-4 flex w-full flex-col rounded-md border-2 p-4"
       >
         <textarea
-          onChange={(e) => setText(e.target.value)}
           className="w-full p-4 shadow"
+          onChange={(e) => setText(e.target.value)}
         />
 
         <div className="mt-4 flex justify-end">
