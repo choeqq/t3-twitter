@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { object, string } from "zod";
 import { trpc } from "../utils/trpc";
 
@@ -28,7 +28,7 @@ export function CreateTweet() {
 
     try {
       await tweetSchema.parse({ text });
-    } catch (e) {
+    } catch (e: any) {
       setError(e.message);
       return;
     }
