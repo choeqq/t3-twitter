@@ -1,12 +1,12 @@
 import Image from "next/image";
-import { RouterInputs, RouterOutputs, trpc } from "../utils/trpc";
+import { type RouterInputs, type RouterOutputs, trpc } from "../utils/trpc";
 import { CreateTweet } from "./CreateTweet";
 
 import { useEffect, useState } from "react";
 import { AiFillHeart } from "react-icons/ai";
 import {
-  InfiniteData,
-  QueryClient,
+  type InfiniteData,
+  type QueryClient,
   useQueryClient,
 } from "@tanstack/react-query";
 
